@@ -128,8 +128,10 @@ class GroceryStore
                     end                
                 end
                 puts "------------------------------------------"
+                puts "------------------------------------------"
                 puts "AVAILABLE AMOUNT"
                     @available_no_of_notes.each {|key,value| puts "#{key} : #{value}" }
+                    puts "TOTAL : #{total_amount}"
                 puts "------------------------------------------"
 
             end
