@@ -65,6 +65,11 @@ class GroceryStore
 
             given_currency = splitted_currency.map { |num| num.to_i}
 
+            unless validate_denominations?(given_currency)
+                puts "Enter valid denominations"
+                break
+            end
+
             total_user_currency = given_currency.sum
 
             if total_user_currency < product_amount
@@ -135,6 +140,12 @@ class GroceryStore
         2000 * @available_no_of_notes[2000] + 500 * @available_no_of_notes[500] + 200* @available_no_of_notes[200] + 100 * @available_no_of_notes[100] + 50 * @available_no_of_notes[50] + 20 * @available_no_of_notes[20] + 10 * @available_no_of_notes[10] + 5 * @available_no_of_notes[5] + 2 * @available_no_of_notes[2] + @available_no_of_notes[1]
        
     end
+
+    def validate_denominations?(denominations)
+        valid_denominations = [1,2,5,10,20,50,100,200,500,2000]
+        denominations.all? {|amount| valid_denominations.include?(amount)}
+    end
+    
 end
 
 grocery = GroceryStore.new
