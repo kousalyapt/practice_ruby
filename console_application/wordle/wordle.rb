@@ -4,126 +4,138 @@ URL = "https://raw.githubusercontent.com/charlesreid1/five-letter-words/refs/hea
 
 class Wordle    
     def initialize(file_path)
-        @dictionary = Set.new(URI.open(URL).readlines.map(&:strip))
+        @dictionary = Set.new(URI.open(URL).readlines.map(&:strip))        
         
-        @chances = 6
         @status = false
-        @wrong_characters = Set.new
-        @right_characters = Set.new
-        @right_position = Array.new(5,'_')
+        
     end
 
     def play
+        
         loop do
-            puts "-------------------------------------------------------"
-            puts "Lets play Wordle!!!"
-            puts "-------------------------------------------------------"
-            puts "Enter the option"
-            puts "1.Instructions to Play"
-            puts "2.Start the game"
-            puts "3.Exit"
-            puts "-------------------------------------------------------"
+            display_menu
             option = gets.chomp.to_i
             if option == 1
                 display_instructions
             elsif option == 2
-                @word_to_guess = @dictionary.to_a.sample
-                #@word_to_guess = "hotel"
-            #     character_count = Hash.new(0)
-            # @word_to_guess.chars.each { |ch| character_count[ch] += 1 }
-                puts "-------------------------------------------------------"
-                puts "Game starts!!"
-                puts "-------------------------------------------------------"
-                until @chances == 0
-                    user_word = ""
-                    until user_word.length == 5
-                        puts "-------------------------------------------------------"
-                        puts "Enter a five-letter word:"
-                        user_word = gets.chomp
-                        puts "-------------------------------------------------------"
-
-                        if user_word.length > 5
-                            puts "*You entered more than five letters. Please enter exactly five letters."
-                            puts "-------------------------------------------------------"
-                        elsif user_word.length < 5
-                            puts "*You entered less than five letters. Please enter exactly five letters."
-                            puts "-------------------------------------------------------"
-                        end
-                    end
-
-                    user_word.downcase!
-                    if valid_word(user_word)
-                        if user_word == @word_to_guess
-                            puts "\e[32m#{user_word}\e[0m"
-                            puts "You guessed the word!! You won!!"
-                            
-                            puts "-------------------------------------------------------"
-                            @status = true
-                            break
-                        else
-                            included_atleast_one = false
-                            display_word = ""
-                            user_word.chars.each_with_index do |user_ch, user_ind|
-                                
-                                if @word_to_guess.include? (user_ch)
-                                    
-                                    included_atleast_one = true
-                                    indices = []
-                
-                                    @word_to_guess.chars.each_with_index do |character,index|
-                                        indices << index if character == user_ch
-                                    end
-                                    
-                    
-                                    if indices.include?(user_ind)
-                                        display_word += "#{green(user_ch)}"
-                                        
-                                        indices.delete(user_ind)
-                                        @right_position[user_ind] = user_ch
-                                        @right_characters.add(user_ch)
-                                    else
-                                        display_word += "#{yellow(user_ch)}"
-                                        
-                                        @right_characters.add(user_ch)
-                                    end
-                                else
-                                    display_word += "#{red(user_ch)}"
-                                    @wrong_characters.add(user_ch)
-                                end
-                                
-                            end
-                            puts display_word
-                            puts "No letters are matched" if included_atleast_one == false
-                        end
-                        @chances = @chances -  1
-                    else
-                        puts "*Enter a valid word"
-                        puts "-------------------------------------------------------"
-                    end
-                    puts "-------------------------------------------------------"
-                    puts "The word to guess: #{@right_position.join(" ")}" unless @right_position.all?{|ele| ele == '_'}
-                    puts "-------------------------------------------------------"
-                    puts "Right Characters : #{@right_characters.to_a}" if @right_characters.length > 0
-                    puts "-------------------------------------------------------"
-                    puts "Wrong Characters : #{@wrong_characters.to_a}" if @wrong_characters.length > 0
-                    puts "-------------------------------------------------------"
-                end
-                if @status == false
-                    puts "-------------------------------------------------------"
-                    puts "You lost"
-                    puts "The word is #{@word_to_guess}"
-                    puts "-------------------------------------------------------"
-                end    
-
+                start_game
             elsif option == 3
+                puts "Thanks for playing! See you next time, Wordle Wizard!"
                 break
             else
-                puts "Enter valid option."
+                puts "#{red("Oops, that’s not a valid option! Try again.")}"
+                puts "-------------------------------------------------------"
+            end      
+        end        
+    end
+
+    def display_menu
+        puts "-------------------------------------------------------"
+        puts "🎉 Lets play Wordle! 🎉"
+        puts "-------------------------------------------------------"
+        puts "Enter the option"
+        puts "1.Learn how to play"
+        puts "2.Start the game"
+        puts "3.Exit (if you're too scared 😜)"
+        puts "-------------------------------------------------------"
+    end
+
+    def start_game
+        @chances = 6
+        @word_to_guess = @dictionary.to_a.sample
+        #@word_to_guess = "hotel"
+        @wrong_characters = Set.new
+        @right_characters = Set.new
+        @right_position = Array.new(5,'_')
+        puts "-------------------------------------------------------"
+        puts "#{green("Get ready... The game starts now!")}"
+        puts "You've got #{green(6)} attempts to crack the code!"
+        puts "-------------------------------------------------------"
+        until @chances == 0
+            
+            user_word = ""
+            until user_word.length == 5
+                puts "-------------------------------------------------------"
+                puts "Enter a five-letter word:"
+                user_word = gets.chomp
+                puts "-------------------------------------------------------"
+                if user_word.length > 5
+                    puts "#{red("*You entered more than five letters. Please enter exactly five letters.")}"
+                    puts "-------------------------------------------------------"
+                elsif user_word.length < 5
+                    puts "#{red("*You entered less than five letters. Please enter exactly five letters.")}"
+                    puts "-------------------------------------------------------"
+                end
+            end
+
+            user_word.downcase!
+
+            if valid_word(user_word)
+                if user_word == @word_to_guess
+                    #puts "#{green(user_word)}"
+                    puts "🎉 Woohoo! You've guessed it! The word is #{green(user_word)}! 🏆"
+                    
+                    puts "-------------------------------------------------------"
+                    @status = true
+                    break
+                else
+
+                    feedback = Array.new(5, "")   
+                    temp_target = @word_to_guess.chars 
+
+                    user_word.chars.each_with_index do |char, i|
+                    if char == @word_to_guess[i]
+                        feedback[i] = green(char)
+                        temp_target[i] = nil 
+                        @right_position[i] = char
+                        @right_characters.add(char)
+                    end
+                    @wrong_characters.add(char)
+                    end
+
+                    user_word.chars.each_with_index do |char, i|
+                    if feedback[i] == green(char) 
+                        @wrong_characters.delete(char)
+                        next
+                    end
+                    if temp_target.include?(char)
+                        feedback[i] = yellow(char)
+                        @right_characters.add(char)
+                        @wrong_characters.delete(char)
+                         
+                        temp_target[temp_target.index(char)] = nil  
+                    
+                    else
+                        feedback[i] = red(char)
+                        @wrong_characters.add(char) unless @word_to_guess.include?(char)
+                    end
+                    end
+
+                end
+                @chances = @chances -  1
+                
+            else
+                puts "#{red("*Hmm... that’s not in my dictionary! Please try again with a valid word.")}"
                 puts "-------------------------------------------------------"
             end
-       
+            puts "-------------------------------------------------------"
+            puts feedback.join()
+            puts "-------------------------------------------------------"
+            puts "Your progress so far: #{@right_position.join(" ")}"
+            puts "-------------------------------------------------------"
+            puts "Right characters so far: #{@right_characters.to_a.sort.join(", ")}"
+            puts "-------------------------------------------------------"
+            puts "Wrong guesses: #{@wrong_characters.to_a.sort.join(", ")}"            
+            puts "-------------------------------------------------------"
+            puts "Careful! You only have #{red(@chances)} chances left!" unless @chances.zero?
         end
-        
+        if @status == false
+            puts "-------------------------------------------------------"
+            puts red("Oh no! You’re out of chances! 😢")
+            puts "The word was: #{green(@word_to_guess)}. Better luck next time!"
+            puts "-------------------------------------------------------"
+        end    
+
     end
 
     def valid_word(word)
@@ -131,29 +143,20 @@ class Wordle
     end
 
     def display_instructions
-        puts "-------------------------------------------------------"
-        puts "  
-        You have to guess the hidden word in 6 tries and the color of the letters changes to show how close you are.
-        To start the game, just enter any word, 
+    
+        puts <<-INSTRUCTIONS
+You have 6 tries to guess the hidden word. The color of the letters will change to show how close you are.
+- #{green("Green")}: The letter is in the word and in the correct position.
+- #{yellow("Yellow")}: The letter is in the word but in the wrong position.
+- #{red("Red")}: The letter is not in the word.
 
-                for example:
-                    
-                            T A B L E
-
-                T , B aren't in the target word at all.
-                A , L is in the word but in the wrong spot.
-                E is in the word and in the correct spot.
-
-            Another try to find matching letters in the target word.
-
-                            F L A S H
-
-                            So close!
-
-                            F L A M E
-
-                            Got it! 🏆"
-        puts "-------------------------------------------------------"
+For example:
+    T A B L E
+    T, B aren't in the target word at all.
+    A, L are in the word but in the wrong spot.
+    E is in the word and in the correct spot.
+    INSTRUCTIONS
+        
     end
 
     def green(text)
@@ -167,6 +170,7 @@ class Wordle
     def red(text)
         "\e[31m#{text}\e[0m"  
     end
+
 
 end
 
