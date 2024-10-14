@@ -20,7 +20,7 @@ class Wordle
             elsif option == 2
                 start_game
             elsif option == 3
-                puts "Thanks for playing! See you next time, Wordle Wizard!"
+                puts cyan("Thanks for playing! See you next time, Wordle Wizard!")
                 break
             else
                 puts "#{red("Oops, that’s not a valid option! Try again.")}"
@@ -31,12 +31,12 @@ class Wordle
 
     def display_menu
         puts "-------------------------------------------------------"
-        puts "🎉 Lets play Wordle! 🎉"
+        puts "🎉 #{cyan("Lets play Wordle!")} 🎉"
         puts "-------------------------------------------------------"
         puts "Enter the option"
-        puts "1.Learn how to play"
-        puts "2.Start the game"
-        puts "3.Exit (if you're too scared 😜)"
+        puts "#{yellow("1.Learn how to play")}"
+        puts "#{green("2.Start the game")}"
+        puts "#{red("3.Exit (if you're too scared 😜)")}"
         puts "-------------------------------------------------------"
     end
 
@@ -47,12 +47,16 @@ class Wordle
         @wrong_characters = Set.new
         @right_characters = Set.new
         @right_position = Array.new(5,'_')
+        @user_words = Array.new
         puts "-------------------------------------------------------"
         puts "#{green("Get ready... The game starts now!")}"
         puts "You've got #{green(6)} attempts to crack the code!"
-        puts "-------------------------------------------------------"
+        show_chances_left
         until @chances == 0
+            puts @user_words
+            puts 
             
+            progress unless @chances == 0 || @chances == 6
             user_word = ""
             until user_word.length == 5
                 puts "-------------------------------------------------------"
@@ -73,8 +77,7 @@ class Wordle
             if valid_word(user_word)
                 if user_word == @word_to_guess
                     #puts "#{green(user_word)}"
-                    puts "🎉 Woohoo! You've guessed it! The word is #{green(user_word)}! 🏆"
-                    
+                    success_message
                     puts "-------------------------------------------------------"
                     @status = true
                     break
@@ -113,26 +116,19 @@ class Wordle
 
                 end
                 @chances = @chances -  1
-                
+                #puts feedback.join(" ")
+                @user_words.push(feedback.join(" "))
             else
                 puts "#{red("*Hmm... that’s not in my dictionary! Please try again with a valid word.")}"
                 puts "-------------------------------------------------------"
+                
             end
-            puts "-------------------------------------------------------"
-            puts feedback.join()
-            puts "-------------------------------------------------------"
-            puts "Your progress so far: #{@right_position.join(" ")}"
-            puts "-------------------------------------------------------"
-            puts "Right characters so far: #{@right_characters.to_a.sort.join(", ")}"
-            puts "-------------------------------------------------------"
-            puts "Wrong guesses: #{@wrong_characters.to_a.sort.join(", ")}"            
-            puts "-------------------------------------------------------"
-            puts "Careful! You only have #{red(@chances)} chances left!" unless @chances.zero?
+            # progress unless @chances == 0
+            
         end
         if @status == false
             puts "-------------------------------------------------------"
-            puts red("Oh no! You’re out of chances! 😢")
-            puts "The word was: #{green(@word_to_guess)}. Better luck next time!"
+            failure_message
             puts "-------------------------------------------------------"
         end    
 
@@ -145,19 +141,47 @@ class Wordle
     def display_instructions
     
         puts <<-INSTRUCTIONS
-You have 6 tries to guess the hidden word. The color of the letters will change to show how close you are.
-- #{green("Green")}: The letter is in the word and in the correct position.
-- #{yellow("Yellow")}: The letter is in the word but in the wrong position.
-- #{red("Red")}: The letter is not in the word.
+        #{yellow("You have 6 tries to guess the hidden word.")}
+        #{cyan("The color of the letters will change to show how close you are:")}
+        - #{green("Green")}: The letter is in the word and in the correct position.
+        - #{yellow("Yellow")}: The letter is in the word but in the wrong position.
+        - #{red("Red")}: The letter is not in the word.
 
-For example:
-    T A B L E
-    T, B aren't in the target word at all.
-    A, L are in the word but in the wrong spot.
-    E is in the word and in the correct spot.
-    INSTRUCTIONS
-        
+        #{cyan("For example:")}
+        #{yellow("T A B L E")}
+        - T, B aren't in the target word at all.
+        - A, L are in the word but in the wrong spot.
+        - E is in the word and in the correct spot.
+        INSTRUCTIONS
+
     end
+
+    def progress
+        puts "Your progress so far: #{@right_position.join(" ")}"
+        puts "-------------------------------------------------------"
+        puts "Right characters so far: #{@right_characters.to_a.sort.join(", ")}" unless @right_characters.empty?
+        puts "-------------------------------------------------------"
+        puts "Wrong guesses: #{@wrong_characters.to_a.sort.join(", ")}" unless @wrong_characters.empty?        
+        puts "-------------------------------------------------------"        
+        puts red("Careful! You only have #{@chances} chances left!") unless @chances.zero? || @chances == 6
+        show_chances_left unless @chances == 6
+    end
+
+    def show_chances_left
+        bar = '🟢' * @chances + '🔴' * (6 - @chances)
+        puts bar
+    end
+
+    def success_message
+        puts "🎉 #{green("Congratulations, Wordle Master! The word was #{green(@word_to_guess)}!")}"
+        puts "🎉🏆 #{cyan("You're a genius!")}"
+    end
+    
+    def failure_message
+        puts red("Oh no! You’re out of chances! 😢")
+        puts "The word was #{green(@word_to_guess)}."
+        puts cyan("Better luck next time!")
+    end    
 
     def green(text)
         "\e[32m#{text}\e[0m"  
@@ -171,7 +195,10 @@ For example:
         "\e[31m#{text}\e[0m"  
     end
 
-
+    def cyan(text)
+        "\e[36m#{text}\e[0m"
+    end
+    
 end
 
 game = Wordle.new(".\\five_letter_words.txt")
