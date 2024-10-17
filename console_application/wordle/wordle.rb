@@ -1,139 +1,189 @@
 require 'open-uri'
 
+
 URL = "https://raw.githubusercontent.com/charlesreid1/five-letter-words/refs/heads/main/sgb-words.txt"
 
 class Wordle    
     def initialize(file_path)
-        @dictionary = Set.new(URI.open(URL).readlines.map(&:strip))        
-        
-        @status = false
-        
+        @dictionary = Set.new            
+        @game_won = false        
+        begin
+            @dictionary = Set.new(URI.open(URL).readlines.map(&:strip))
+        rescue SocketError => e
+            puts "Network error. Please check your internet connection."
+            exit 
+        rescue OpenURI::HTTPError => e
+            puts "HTTP error. Unable to retrieve the word list."
+            exit 
+        rescue StandardError => e
+            puts "An error occurred. Please try again later."
+            exit 
+        end
     end
 
-    def play
-        
+    def handle_user_selection        
         loop do
-            display_menu
-            option = gets.chomp.to_i
-            if option == 1
+            display_game_options
+            user_choice = gets.chomp.to_i
+            if user_choice == 1
                 display_instructions
-            elsif option == 2
+            elsif user_choice == 2
                 start_game
-            elsif option == 3
-                puts cyan("Thanks for playing! See you next time, Wordle Wizard!")
+            elsif user_choice == 3
+                puts cyan_font("Thanks for playing! See you next time, Wordle Wizard!")
                 break
             else
-                puts "#{red("Oops, that’s not a valid option! Try again.")}"
+                puts "#{red_font("Oops, that’s not a valid option! Try again.")}"
                 puts "-------------------------------------------------------"
             end      
         end        
     end
 
-    def display_menu
+    def display_game_options
         puts "-------------------------------------------------------"
-        puts "🎉 #{cyan("Lets play Wordle!")} 🎉"
+        puts "🎉 #{cyan_font("Lets play Wordle!")} 🎉"
         puts "-------------------------------------------------------"
         puts "Enter the option"
-        puts "#{yellow("1.Learn how to play")}"
-        puts "#{green("2.Start the game")}"
-        puts "#{red("3.Exit (if you're too scared 😜)")}"
+        puts "#{yellow_font("1.Learn how to play")}"
+        puts "#{green_font("2.Start the game")}"
+        puts "#{red_font("3.Exit ")}"
         puts "-------------------------------------------------------"
     end
 
     def start_game
-        @chances = 6
-        @word_to_guess = @dictionary.to_a.sample
-        #@word_to_guess = "hotel"
-        @wrong_characters = Set.new
-        @right_characters = Set.new
-        @right_position = Array.new(5,'_')
-        @user_words = Array.new
-        puts "-------------------------------------------------------"
-        puts "#{green("Get ready... The game starts now!")}"
-        puts "You've got #{green(6)} attempts to crack the code!"
-        show_chances_left
-        until @chances == 0
-            puts @user_words
-            puts 
-            
-            progress unless @chances == 0 || @chances == 6
-            user_word = ""
-            until user_word.length == 5
-                puts "-------------------------------------------------------"
-                puts "Enter a five-letter word:"
-                user_word = gets.chomp
-                puts "-------------------------------------------------------"
-                if user_word.length > 5
-                    puts "#{red("*You entered more than five letters. Please enter exactly five letters.")}"
-                    puts "-------------------------------------------------------"
-                elsif user_word.length < 5
-                    puts "#{red("*You entered less than five letters. Please enter exactly five letters.")}"
-                    puts "-------------------------------------------------------"
-                end
-            end
 
-            user_word.downcase!
+        initialize_game_state  
+        display_welcome_message
+        play_game
+           
+    end
 
-            if valid_word(user_word)
-                if user_word == @word_to_guess
-                    #puts "#{green(user_word)}"
-                    success_message
-                    puts "-------------------------------------------------------"
-                    @status = true
-                    break
-                else
+    def play_game
 
-                    feedback = Array.new(5, "")   
-                    temp_target = @word_to_guess.chars 
-
-                    user_word.chars.each_with_index do |char, i|
-                    if char == @word_to_guess[i]
-                        feedback[i] = green(char)
-                        temp_target[i] = nil 
-                        @right_position[i] = char
-                        @right_characters.add(char)
-                    end
-                    @wrong_characters.add(char)
-                    end
-
-                    user_word.chars.each_with_index do |char, i|
-                    if feedback[i] == green(char) 
-                        @wrong_characters.delete(char)
-                        next
-                    end
-                    if temp_target.include?(char)
-                        feedback[i] = yellow(char)
-                        @right_characters.add(char)
-                        @wrong_characters.delete(char)
-                         
-                        temp_target[temp_target.index(char)] = nil  
-                    
-                    else
-                        feedback[i] = red(char)
-                        @wrong_characters.add(char) unless @word_to_guess.include?(char)
-                    end
-                    end
-
-                end
-                @chances = @chances -  1
-                #puts feedback.join(" ")
-                @user_words.push(feedback.join(" "))
-            else
-                puts "#{red("*Hmm... that’s not in my dictionary! Please try again with a valid word.")}"
-                puts "-------------------------------------------------------"
-                
-            end
-            # progress unless @chances == 0
-            
-        end
-        if @status == false
-            puts "-------------------------------------------------------"
-            failure_message
-            puts "-------------------------------------------------------"
+        until @remaining_attempts == 0    
+            break if play_turn
         end    
+        display_failure_message unless @game_won
 
     end
 
+    def initialize_game_state
+        @remaining_attempts = 6
+        @secret_word = @dictionary.to_a.sample
+        @wrong_characters = Set.new
+        @right_characters = Set.new
+        @correctly_placed_letters = Array.new(5, '_')
+        @attempted_words = Array.new
+        @game_won = false
+    end
+
+    def play_turn
+        
+        puts @attempted_words
+        show_current_status unless @remaining_attempts == 0 || @remaining_attempts == 6
+          
+        player_guess = get_user_input
+      
+        if valid_word(player_guess)
+             return handle_valid_guess(player_guess)
+        else
+            display_invalid_word_message
+        end
+    end
+
+    def handle_valid_guess(player_guess)
+        if check_win_condition(player_guess)
+            display_success_message
+            return true
+        else
+            check_guess_accuracy(player_guess)
+            @remaining_attempts -= 1
+            return false
+        end
+    end
+      
+      
+    def display_welcome_message
+        puts "-------------------------------------------------------"
+        puts "#{green_font("Get ready... The game starts now!")} "
+        puts "You've got #{green_font(6)} attempts to crack the code!"
+    end
+      
+    
+      
+    def get_user_input
+        player_guess = ""
+        until player_guess.length == 5
+          puts "-------------------------------------------------------"
+          puts "Enter a five-letter word:"
+          player_guess = gets.chomp.strip.downcase
+          puts "-------------------------------------------------------"
+          if player_guess.length == 0
+            puts "#{red_font("Please enter a five letter word.")}"
+          elsif player_guess.length > 5
+            puts "#{red_font("*You entered more than five letters. Please enter exactly five letters.")}"
+          elsif player_guess.length < 5
+            puts "#{red_font("*You entered less than five letters. Please enter exactly five letters.")}"
+          end
+        end
+        player_guess
+    end
+      
+    def check_win_condition(player_guess)
+        if player_guess == @secret_word
+          @game_won = true
+          true
+        else
+          false
+        end
+    end
+      
+    def check_guess_accuracy(player_guess)
+        validated_user_word = Array.new(5, "")
+        secret_word_clone = @secret_word.chars 
+
+        identify_correctly_placed_letters(player_guess, validated_user_word, secret_word_clone)
+
+        identify_misplaced_letters(player_guess, validated_user_word, secret_word_clone )
+            
+        @attempted_words.push(validated_user_word.join(" "))
+    end
+
+    def identify_correctly_placed_letters(player_guess, validated_user_word, secret_word_clone)
+        player_guess.chars.each_with_index do |char, i|
+            if char == @secret_word[i]
+                validated_user_word[i] = green_font(char)
+                secret_word_clone[i] = nil
+                @correctly_placed_letters[i] = char
+                @right_characters.add(char)
+            end
+              @wrong_characters.add(char)
+        end
+    end
+
+    def identify_misplaced_letters(player_guess, validated_user_word, secret_word_clone )
+        player_guess.chars.each_with_index do |char, i|
+            if validated_user_word[i] == green_font(char)
+                @wrong_characters.delete(char)
+                next
+            end
+            if secret_word_clone.include?(char)
+                validated_user_word[i] = yellow_font(char)
+                @right_characters.add(char)
+                @wrong_characters.delete(char)
+                secret_word_clone[secret_word_clone.index(char)] = nil
+            else
+                validated_user_word[i] = red_font(char)
+                @wrong_characters.add(char) unless @secret_word.include?(char)
+            end
+        end
+    end
+      
+    def display_invalid_word_message
+        puts "#{red_font("*Please try again with a valid word.")}"
+    end
+      
+      
     def valid_word(word)
         @dictionary.include?(word)
     end
@@ -141,14 +191,14 @@ class Wordle
     def display_instructions
     
         puts <<-INSTRUCTIONS
-        #{yellow("You have 6 tries to guess the hidden word.")}
-        #{cyan("The color of the letters will change to show how close you are:")}
-        - #{green("Green")}: The letter is in the word and in the correct position.
-        - #{yellow("Yellow")}: The letter is in the word but in the wrong position.
-        - #{red("Red")}: The letter is not in the word.
+        #{yellow_font("You have 6 tries to guess the hidden word.")}
+        #{cyan_font("The color of the letters will change to show how close you are:")}
+        - #{green_font("Green")}: The letter is in the word and in the correct position.
+        - #{yellow_font("Yellow")}: The letter is in the word but in the wrong position.
+        - #{red_font("Red")}: The letter is not in the word.
 
-        #{cyan("For example:")}
-        #{yellow("T A B L E")}
+        #{cyan_font("For example:")}
+        #{yellow_font("T A B L E")}
         - T, B aren't in the target word at all.
         - A, L are in the word but in the wrong spot.
         - E is in the word and in the correct spot.
@@ -156,50 +206,53 @@ class Wordle
 
     end
 
-    def progress
-        puts "Your progress so far: #{@right_position.join(" ")}"
+    def show_current_status
+
+        puts "Your progress so far: #{@correctly_placed_letters.join(" ")}"
         puts "-------------------------------------------------------"
         puts "Right characters so far: #{@right_characters.to_a.sort.join(", ")}" unless @right_characters.empty?
         puts "-------------------------------------------------------"
         puts "Wrong guesses: #{@wrong_characters.to_a.sort.join(", ")}" unless @wrong_characters.empty?        
         puts "-------------------------------------------------------"        
-        puts red("Careful! You only have #{@chances} chances left!") unless @chances.zero? || @chances == 6
-        show_chances_left unless @chances == 6
+        puts red_font("Careful! You only have #{@remaining_attempts} chances left!") unless @remaining_attempts.zero? || @remaining_attempts == 6
+        show_chances_left unless @remaining_attempts == 6
     end
 
     def show_chances_left
-        bar = '🟢' * @chances + '🔴' * (6 - @chances)
+        bar = '🟢' * @remaining_attempts + '🔴' * (6 - @remaining_attempts)
         puts bar
     end
 
-    def success_message
-        puts "🎉 #{green("Congratulations, Wordle Master! The word was #{green(@word_to_guess)}!")}"
-        puts "🎉🏆 #{cyan("You're a genius!")}"
+    def display_success_message
+        puts "🎉 #{green_font("Congratulations, Wordle Master! The word was #{green_font(@secret_word)}!")}"
+        puts "🎉🏆 #{cyan_font("You're a genius!")}"
     end
     
-    def failure_message
-        puts red("Oh no! You’re out of chances! 😢")
-        puts "The word was #{green(@word_to_guess)}."
-        puts cyan("Better luck next time!")
+    def display_failure_message
+        puts "-------------------------------------------------------"
+        puts red_font("Oh no! You’re out of chances! 😢")
+        puts "The word was #{green_font(@secret_word)}."
+        puts cyan_font("Better luck next time!")
+        puts "-------------------------------------------------------"
     end    
 
-    def green(text)
+    def green_font(text)
         "\e[32m#{text}\e[0m"  
     end
       
-    def yellow(text)
+    def yellow_font(text)
         "\e[33m#{text}\e[0m" 
     end
       
-    def red(text)
+    def red_font(text)
         "\e[31m#{text}\e[0m"  
     end
 
-    def cyan(text)
+    def cyan_font(text)
         "\e[36m#{text}\e[0m"
     end
     
 end
 
 game = Wordle.new(".\\five_letter_words.txt")
-game.play
+game.handle_user_selection        
